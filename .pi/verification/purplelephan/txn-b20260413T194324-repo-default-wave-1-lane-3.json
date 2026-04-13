@@ -1,0 +1,16 @@
+{
+  "opId": "purplelephan",
+  "batchId": "20260413T194324",
+  "waveIndex": 1,
+  "laneNumber": 3,
+  "repoId": null,
+  "baseHEAD": "1e1ae244e8f925883c87cbe59ed7b8b126544512",
+  "laneHEAD": "4573c7279036378717f65cbef5698e92d840e918",
+  "mergedHEAD": "7af15fff31df31387b46f97ce6b7a226fee8b646",
+  "status": "committed",
+  "rollbackAttempted": false,
+  "rollbackResult": null,
+  "recoveryCommands": [],
+  "startedAt": "2026-04-13T16:44:17.467Z",
+  "completedAt": "2026-04-13T16:44:39.548Z"
+}

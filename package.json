@@ -1,14 +1,33 @@
 {
-  "name": "${PROJECT_NAME}",
+  "name": "pi-fallback-provider",
   "version": "1.0.0",
-  "description": "",
+  "description": "Custom provider extension for pi that implements model fallback chains",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
-  "dependencies": {},
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "keywords": [
+    "pi-extension",
+    "pi-package"
+  ],
   "devDependencies": {
-    "typescript": "^5.5.3"
+    "@mariozechner/pi-ai": "^0.66.1",
+    "@types/node": "^25.6.0",
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.4"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.66.0"
   },
   "private": true
 }

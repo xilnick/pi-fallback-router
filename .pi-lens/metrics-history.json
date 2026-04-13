@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "files": {
+    "../../.pi/extensions/pi-fallback-provider/index.ts": {
+      "latest": {
+        "commit": "fb5ceff",
+        "timestamp": "2026-04-11T21:27:20.170Z",
+        "mi": 29.5,
+        "cognitive": 116,
+        "nesting": 8,
+        "lines": 285,
+        "maxCyclomatic": 32,
+        "entropy": 6.47
+      },
+      "history": [
+        {
+          "commit": "fb5ceff",
+          "timestamp": "2026-04-11T21:27:20.170Z",
+          "mi": 29.5,
+          "cognitive": 116,
+          "nesting": 8,
+          "lines": 285,
+          "maxCyclomatic": 32,
+          "entropy": 6.47
+        }
+      ],
+      "trend": "stable"
+    },
+    "src/index.ts": {
+      "latest": {
+        "commit": "fb5ceff",
+        "timestamp": "2026-04-13T03:50:11.320Z",
+        "mi": 95.1,
+        "cognitive": 0,
+        "nesting": 0,
+        "lines": 1,
+        "maxCyclomatic": 1,
+        "entropy": 1
+      },
+      "history": [
+        {
+          "commit": "fb5ceff",
+          "timestamp": "2026-04-13T03:50:11.320Z",
+          "mi": 95.1,
+          "cognitive": 0,
+          "nesting": 0,
+          "lines": 1,
+          "maxCyclomatic": 1,
+          "entropy": 1
+        }
+      ],
+      "trend": "stable"
+    },
+    "src/__tests__/fallback.test.ts": {
+      "latest": {
+        "commit": "fb5ceff",
+        "timestamp": "2026-04-13T15:05:22.202Z",
+        "mi": 21.3,
+        "cognitive": 104,
+        "nesting": 7,
+        "lines": 288,
+        "maxCyclomatic": 57,
+        "entropy": 5.82
+      },
+      "history": [
+        {
+          "commit": "fb5ceff",
+          "timestamp": "2026-04-13T15:05:22.202Z",
+          "mi": 21.3,
+          "cognitive": 104,
+          "nesting": 7,
+          "lines": 288,
+          "maxCyclomatic": 57,
+          "entropy": 5.82
+        }
+      ],
+      "trend": "stable"
+    }
+  },
+  "capturedAt": "2026-04-13T15:05:28.876Z"
+}

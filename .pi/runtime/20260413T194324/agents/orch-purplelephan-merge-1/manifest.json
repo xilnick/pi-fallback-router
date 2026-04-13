@@ -1,0 +1,14 @@
+{
+  "batchId": "20260413T194324",
+  "agentId": "orch-purplelephan-merge-1",
+  "role": "merger",
+  "laneNumber": null,
+  "taskId": null,
+  "repoId": "default",
+  "pid": 65380,
+  "parentPid": 64579,
+  "startedAt": 1776098607334,
+  "status": "killed",
+  "cwd": "/Users/purplelephant/projects/pi-fallback-router/.worktrees/purplelephan-20260413T194324/merge",
+  "packet": null
+}

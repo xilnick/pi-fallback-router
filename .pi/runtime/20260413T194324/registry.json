@@ -1,0 +1,48 @@
+{
+  "batchId": "20260413T194324",
+  "updatedAt": 1776098679660,
+  "agents": {
+    "orch-purplelephan-merge-1": {
+      "batchId": "20260413T194324",
+      "agentId": "orch-purplelephan-merge-1",
+      "role": "merger",
+      "laneNumber": null,
+      "taskId": null,
+      "repoId": "default",
+      "pid": 65380,
+      "parentPid": 64579,
+      "startedAt": 1776098607334,
+      "status": "killed",
+      "cwd": "/Users/purplelephant/projects/pi-fallback-router/.worktrees/purplelephan-20260413T194324/merge",
+      "packet": null
+    },
+    "orch-purplelephan-merge-2": {
+      "batchId": "20260413T194324",
+      "agentId": "orch-purplelephan-merge-2",
+      "role": "merger",
+      "laneNumber": null,
+      "taskId": null,
+      "repoId": "default",
+      "pid": 65597,
+      "parentPid": 64579,
+      "startedAt": 1776098629414,
+      "status": "killed",
+      "cwd": "/Users/purplelephant/projects/pi-fallback-router/.worktrees/purplelephan-20260413T194324/merge",
+      "packet": null
+    },
+    "orch-purplelephan-merge-3": {
+      "batchId": "20260413T194324",
+      "agentId": "orch-purplelephan-merge-3",
+      "role": "merger",
+      "laneNumber": null,
+      "taskId": null,
+      "repoId": "default",
+      "pid": 65770,
+      "parentPid": 64579,
+      "startedAt": 1776098657509,
+      "status": "killed",
+      "cwd": "/Users/purplelephant/projects/pi-fallback-router/.worktrees/purplelephan-20260413T194324/merge",
+      "packet": null
+    }
+  }
+}

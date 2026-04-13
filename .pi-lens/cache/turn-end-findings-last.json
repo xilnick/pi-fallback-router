@@ -1,0 +1,3 @@
+{
+  "signature": "src/index.ts::🔴 New duplicates in modified code:\n  src/index.ts:254 ↔ src/index.ts:228 (9 lines)\n  First location: src/index.ts\n"
+}

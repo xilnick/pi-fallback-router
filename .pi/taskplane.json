@@ -1,0 +1,16 @@
+{
+  "version": "0.25.8",
+  "installedAt": "2026-04-11T19:55:36.167Z",
+  "lastUpgraded": "2026-04-11T19:55:36.167Z",
+  "components": {
+    "agents": "0.25.8",
+    "config": "0.25.8"
+  },
+  "migrations": {
+    "applied": {
+      "add-supervisor-local-template-v1": {
+        "appliedAt": "2026-04-11T19:56:14.320Z"
+      }
+    }
+  }
+}

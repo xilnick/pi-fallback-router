@@ -1,0 +1,22 @@
+{
+  "exitCode": null,
+  "exitSignal": "SIGTERM",
+  "tokens": {
+    "input": 6412,
+    "output": 867,
+    "cacheRead": 9810,
+    "cacheWrite": 477
+  },
+  "cost": 0.0037314749999999997,
+  "toolCalls": 6,
+  "retries": 0,
+  "compactions": 0,
+  "durationSec": 22,
+  "lastToolCall": "write: /Users/purplelephant/projects/pi-fallback-router/.pi/merge-result-w1-lane3-purplelephan-20260413T194324.json",
+  "error": null,
+  "contextUsage": {
+    "tokens": 3298,
+    "contextWindow": 204800,
+    "percent": 1.6103515624999998
+  }
+}

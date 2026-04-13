@@ -1,0 +1,21 @@
+{
+  "batchId": "20260413T194324",
+  "mergeNumber": 1,
+  "sessionName": "orch-purplelephan-merge-1",
+  "waveIndex": 1,
+  "status": "failed",
+  "agent": {
+    "agentId": "orch-purplelephan-merge-1",
+    "status": "crashed",
+    "elapsedMs": 22083,
+    "toolCalls": 5,
+    "contextPct": 1.1328125,
+    "costUsd": 0.0034469999999999995,
+    "lastTool": "write: /Users/purplelephant/projects/pi-fallback-router/.pi/merge-result-w1-lane1-purplelephan-20260413T194324.json",
+    "inputTokens": 4170,
+    "outputTokens": 931,
+    "cacheReadTokens": 4905,
+    "cacheWriteTokens": 2092
+  },
+  "updatedAt": 1776098629418
+}
