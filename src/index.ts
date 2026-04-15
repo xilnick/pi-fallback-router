@@ -306,6 +306,7 @@ function createFallbackStream(
         let modelSucceeded = false;
 
         while (retryCount < MAX_RETRIES_PER_MODEL && !modelSucceeded) {
+          let timeoutId: ReturnType<typeof setTimeout> | undefined;
           try {
             const targetModel = modelRegistry.find(providerName, targetModelId);
             if (!targetModel) {
@@ -330,7 +331,25 @@ function createFallbackStream(
               console.log(`[Fallback DEBUG] Context Messages: ${context.messages.length}`);
             }
 
-            const sourceStream = streamSimple(targetModel, context, { ...options, apiKey: authResult.apiKey, headers: authResult.headers });
+            const abortController = new AbortController();
+            timeoutId = setTimeout(() => {
+              console.warn(`[Fallback DEBUG] ${targetModelString} connection timed out after 10s`);
+              abortController.abort(new Error("Connection timed out after 10 seconds"));
+            }, 10000);
+
+            if (options?.signal) {
+              options.signal.addEventListener("abort", () => {
+                if (timeoutId) clearTimeout(timeoutId);
+                abortController.abort(options.signal?.reason);
+              });
+            }
+
+            const sourceStream = streamSimple(targetModel, context, { 
+              ...options, 
+              apiKey: authResult.apiKey, 
+              headers: authResult.headers,
+              signal: abortController.signal
+            });
 
             let shouldFallback = false;
             let errorDelayMs: number | undefined;
@@ -340,6 +359,7 @@ function createFallbackStream(
 
             for await (const event of sourceStream) {
               if (event.type === "error" && !hasEmitted) {
+                if (timeoutId) clearTimeout(timeoutId);
                 const errorStr = event.error?.errorMessage || JSON.stringify(event.error) || "Unknown error event";
                 console.warn(`[Fallback] ${targetModelString} stream failed: ${errorStr}`);
                 if (event.error) {
@@ -364,6 +384,7 @@ function createFallbackStream(
                 eventBuffer.push(event);
                 // Switch to live streaming once we get actual text or completion
                 if (event.type === "text_delta" || event.type === "done") {
+                  if (timeoutId) clearTimeout(timeoutId);
                   hasEmitted = true;
                   console.log(`[Fallback] ${targetModelString} succeeded (streaming started)`);
                   onSuccess(chainName, targetModelString, originalIndex);
@@ -380,6 +401,8 @@ function createFallbackStream(
                 }
               }
             }
+
+            if (timeoutId && !hasEmitted) clearTimeout(timeoutId);
 
             if (shouldFallback) {
               const waitDelay = errorDelayMs || currentDelayMs;
@@ -418,6 +441,7 @@ function createFallbackStream(
             }
 
           } catch (error) {
+            if (timeoutId) clearTimeout(timeoutId);
             const errorStr = error instanceof Error ? error.message : String(error);
             console.error(`[Fallback DEBUG] Caught exception for ${targetModelString}:`, error);
             
