@@ -326,6 +326,8 @@ function createFallbackStream(
               console.log(`[Fallback] Retry ${retryCount}/${MAX_RETRIES_PER_MODEL} for ${targetModelString} after ${currentDelayMs}ms backoff`);
             } else {
               console.log(`[Fallback] Attempting: ${targetModelString} (${attempt + 1}/${modelOrder.length})`);
+              console.log(`[Fallback DEBUG] Target Base URL: ${targetModel.baseUrl || "default"}`);
+              console.log(`[Fallback DEBUG] Context Messages: ${context.messages.length}`);
             }
 
             const sourceStream = streamSimple(targetModel, context, { ...options, apiKey: authResult.apiKey, headers: authResult.headers });
@@ -337,8 +339,11 @@ function createFallbackStream(
 
             for await (const event of sourceStream) {
               if (event.type === "error" && !hasEmitted) {
-                const errorStr = event.error?.errorMessage || "";
-                console.warn(`[Fallback] ${targetModelString} failed: ${errorStr}`);
+                const errorStr = event.error?.errorMessage || JSON.stringify(event.error) || "Unknown error event";
+                console.warn(`[Fallback] ${targetModelString} stream failed: ${errorStr}`);
+                if (event.error) {
+                  console.warn(`[Fallback DEBUG] Error Details:`, JSON.stringify(event.error, null, 2));
+                }
                 lastError = new Error(errorStr);
                 
                 const { retryable, delayMs } = isRetryableError(errorStr);
@@ -407,9 +412,11 @@ function createFallbackStream(
 
           } catch (error) {
             const errorStr = error instanceof Error ? error.message : String(error);
+            console.error(`[Fallback DEBUG] Caught exception for ${targetModelString}:`, error);
+            
             const { retryable, delayMs } = isRetryableError(errorStr);
 
-            console.warn(`[Fallback] ${targetModelString} failed: ${errorStr}`);
+            console.warn(`[Fallback] ${targetModelString} connection failed: ${errorStr}`);
             lastError = error instanceof Error ? error : new Error(errorStr);
 
             if (retryable) {

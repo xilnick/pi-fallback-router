@@ -1,16 +1,7 @@
 {
   "success": true,
-  "clones": [
-    {
-      "fileA": "src/index.ts",
-      "startA": 254,
-      "fileB": "src/index.ts",
-      "startB": 228,
-      "lines": 9,
-      "tokens": 0
-    }
-  ],
-  "duplicatedLines": 8,
-  "totalLines": 635,
-  "percentage": 1.26
+  "clones": [],
+  "duplicatedLines": 0,
+  "totalLines": 673,
+  "percentage": 0
 }
