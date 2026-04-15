@@ -1,8 +1,8 @@
 # General — Context
 
-**Last Updated:** 2026-04-13
+**Last Updated:** 2026-04-16
 **Status:** Active
-**Next Task ID:** TP-006
+**Next Task ID:** TP-009
 
 ---
 
@@ -26,6 +26,9 @@ tasks or `/orch all` for parallel batch execution.
 
 | ID | Title | Size | Priority |
 |----|-------|------|----------|
+| TP-006 | Consolidate Tests & Prepare for Publishing | M | High |
+| TP-007 | Polish README for User Attraction | S | High |
+| TP-008 | Add License, Contributing Guide & Changelog | S | Medium |
 | TP-002 | Fix parseModelString Edge Case | S | Medium |
 | TP-003 | Persist Cache to Disk | M | Medium |
 | TP-004 | Deduplicate getModelOrder Logic | S | Low |
@@ -39,8 +42,9 @@ tasks or `/orch all` for parallel batch execution.
 |----------|------|
 | Extension | `src/index.ts` |
 | Tests | `src/__tests__/fallback.test.ts` |
+| Scripts | `test-real-minimax.ts` (root, to be moved) |
 | Tasks | `taskplane-tasks/` |
-| Config | `.pi/task-runner.yaml` |
+| Config | `.pi/taskplane-config.json` |
 
 ---
 
@@ -63,5 +67,14 @@ npm run test:coverage # With coverage
 
 ---
 
+## Publishing Checklist (TP-006)
+
+- [ ] Export pure functions from `src/index.ts`
+- [ ] Refactor tests to import real functions
+- [ ] Move `test-real-minimax.ts` to `scripts/`
+- [ ] Remove `"private": true` from `package.json`
+- [ ] Add `files`, `types`, `sideEffects`, publish metadata
+- [ ] Add `prepublishOnly` script
+
 ## Next Task ID
-TP-006
+TP-009
