@@ -50,7 +50,8 @@ describe("Fallback Provider Extension - Unit Tests", () => {
     const retryablePatterns = [
       "rate limit", "overloaded", "too many requests", "fetch failed",
       "network error", "connection refused", "timeout",
-      "temporarily unavailable", "service unavailable", "429", "529", "resource_exhausted",
+      "temporarily unavailable", "service unavailable", "429", "529", "500", "502", "503", "504", "resource_exhausted",
+      "internal server error", "socket hang up", "econnreset", "bad gateway", "gateway timeout"
     ];
 
     const isRetryableError = (errorMessage: string): boolean => {

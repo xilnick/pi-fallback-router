@@ -154,9 +154,30 @@ function extractRetryDelay(error: ProviderError): number | null {
 
 /** Check if an error is retryable */
 function isRetryableError(errorMessage: string): { retryable: boolean; delayMs?: number } {
-  // To ensure the 10 retries in 10 seconds requirement is met for all unexpected provider failures,
-  // we consider all streaming errors as retryable. Pre-flight checks (auth, model exists) are handled elsewhere.
-  return { retryable: true, delayMs: undefined };
+  const parsed = parseProviderError(errorMessage);
+  
+  if (parsed) {
+    if (parsed.code === 429 || parsed.code === 529 || parsed.code === 500 || parsed.code === 502 || parsed.code === 503 || parsed.code === 504) {
+      const delay = extractRetryDelay(parsed);
+      return { retryable: true, delayMs: delay ?? undefined };
+    }
+    
+    const retryableStatuses = ["RESOURCE_EXHAUSTED", "OVERLOADED", "UNAVAILABLE", "DEADLINE_EXCEEDED", "INTERNAL"];
+    if (parsed.status && retryableStatuses.includes(parsed.status)) {
+      const delay = extractRetryDelay(parsed);
+      return { retryable: true, delayMs: delay ?? undefined };
+    }
+  }
+  
+  const message = errorMessage.toLowerCase();
+  const retryablePatterns = [
+    "rate limit", "overloaded", "too many requests", "fetch failed",
+    "network error", "connection refused", "timeout",
+    "temporarily unavailable", "service unavailable", "429", "529", "500", "502", "503", "504", "resource_exhausted",
+    "internal server error", "socket hang up", "econnreset", "bad gateway", "gateway timeout"
+  ];
+  
+  return { retryable: retryablePatterns.some((p) => message.includes(p)) };
 }
 
 /** Parse provider/model string */
@@ -312,6 +333,7 @@ function createFallbackStream(
             let shouldFallback = false;
             let errorDelayMs: number | undefined;
             let hasEmitted = false;
+            const eventBuffer: Parameters<typeof stream.push>[0][] = [];
 
             for await (const event of sourceStream) {
               if (event.type === "error" && !hasEmitted) {
@@ -331,18 +353,24 @@ function createFallbackStream(
                 break;
               }
               
-              if (!hasEmitted && event.type !== "error") {
-                // First successful event, committed to this model
-                hasEmitted = true;
-                console.log(`[Fallback] ${targetModelString} succeeded`);
-                onSuccess(chainName, targetModelString, originalIndex);
-              }
-              
-              stream.push(event);
-              
-              if (event.type === "error" && hasEmitted) {
-                stream.end();
-                return;
+              if (!hasEmitted) {
+                eventBuffer.push(event);
+                // Switch to live streaming once we get actual text or completion
+                if (event.type === "text_delta" || event.type === "done") {
+                  hasEmitted = true;
+                  console.log(`[Fallback] ${targetModelString} succeeded (streaming started)`);
+                  onSuccess(chainName, targetModelString, originalIndex);
+                  for (const e of eventBuffer) {
+                    stream.push(e);
+                  }
+                  eventBuffer.length = 0; // Clear buffer
+                }
+              } else {
+                stream.push(event);
+                if (event.type === "error") {
+                  stream.end();
+                  return;
+                }
               }
             }
 
@@ -361,13 +389,20 @@ function createFallbackStream(
               }
             }
 
-            if (hasEmitted) {
+            if (!hasEmitted) {
+              // Stream ended without text_delta or done (rare but possible)
+              if (eventBuffer.length > 0) {
+                console.log(`[Fallback] ${targetModelString} succeeded (empty stream)`);
+                onSuccess(chainName, targetModelString, originalIndex);
+                for (const e of eventBuffer) {
+                  stream.push(e);
+                }
+              }
               stream.end();
               return;
             } else {
-              // Errored on first event, but not retryable
-              // Break inner retry loop to try next model
-              break;
+              stream.end();
+              return;
             }
 
           } catch (error) {
