@@ -76,7 +76,7 @@ const MAX_RETRIES_PER_MODEL = 10;
 const INITIAL_RETRY_DELAY_MS = 1000;
 
 /** Max retry delay cap (ms) */
-const MAX_RETRY_DELAY_MS = 60000;
+const MAX_RETRY_DELAY_MS = 1000;
 
 /** Load fallback chains from config file */
 function loadFallbackChains(): FallbackChain {
