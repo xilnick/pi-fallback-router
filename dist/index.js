@@ -24,17 +24,17 @@ const log = {
     error: (...args) => DEBUG && console.error(...args),
 };
 /** Cache TTL: 1 hour in milliseconds */
-const CACHE_TTL_MS = 60 * 60 * 1000;
+export const CACHE_TTL_MS = 60 * 60 * 1000;
 /** Failed model cooldown: 5 minutes */
-const FAILED_COOLDOWN_MS = 5 * 60 * 1000;
+export const FAILED_COOLDOWN_MS = 5 * 60 * 1000;
 /** Max retries per model on retryable errors */
-const MAX_RETRIES_PER_MODEL = 10;
+export const MAX_RETRIES_PER_MODEL = 10;
 /** Initial retry delay (ms) */
-const INITIAL_RETRY_DELAY_MS = 1000;
+export const INITIAL_RETRY_DELAY_MS = 1000;
 /** Max retry delay cap (ms) */
-const MAX_RETRY_DELAY_MS = 1000;
+export const MAX_RETRY_DELAY_MS = 1000;
 /** Load fallback chains from config file */
-function loadFallbackChains() {
+export function loadFallbackChains() {
     try {
         if (!fs.existsSync(CONFIG_PATH)) {
             log.warn(`[Fallback] Config not found at ${CONFIG_PATH}`);
@@ -66,7 +66,7 @@ function loadFallbackChains() {
     }
 }
 /** Extract error info from various error formats */
-function parseProviderError(errorMessage) {
+export function parseProviderError(errorMessage) {
     try {
         const parsed = JSON.parse(errorMessage);
         if (parsed.error) {
@@ -89,7 +89,7 @@ function parseProviderError(errorMessage) {
     }
 }
 /** Extract retry delay from error (e.g., "53.021s" -> 53021) */
-function extractRetryDelay(error) {
+export function extractRetryDelay(error) {
     if (!error.details)
         return null;
     for (const detail of error.details) {
@@ -103,7 +103,7 @@ function extractRetryDelay(error) {
     return null;
 }
 /** Check if an error is retryable */
-function isRetryableError(errorMessage) {
+export function isRetryableError(errorMessage) {
     const parsed = parseProviderError(errorMessage);
     if (parsed) {
         if (parsed.code === 429 || parsed.code === 529 || parsed.code === 500 || parsed.code === 502 || parsed.code === 503 || parsed.code === 504) {
@@ -121,12 +121,12 @@ function isRetryableError(errorMessage) {
         "rate limit", "overloaded", "too many requests", "fetch failed",
         "network error", "connection refused", "timeout",
         "temporarily unavailable", "service unavailable", "429", "529", "500", "502", "503", "504", "resource_exhausted",
-        "internal server error", "socket hang up", "econnreset", "bad gateway", "gateway timeout"
+        "internal server error", "socket hang up", "econnreset", "bad gateway", "gateway timeout", "aborted", "abort"
     ];
     return { retryable: retryablePatterns.some((p) => message.includes(p)) };
 }
 /** Parse provider/model string */
-function parseModelString(modelString) {
+export function parseModelString(modelString) {
     const parts = modelString.split("/");
     if (parts.length < 2 || !parts[0])
         return null;
@@ -157,7 +157,7 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 /** Determine the order of models to try based on cache */
-function getModelOrder(chainName, fallbackList, cache, failedModels) {
+export function getModelOrder(chainName, fallbackList, cache, failedModels) {
     log.debug(`[Fallback] Selecting by priority, starting from beginning`);
     const ordered = [...fallbackList];
     return { models: ordered, startIndex: 0, usedCache: false };
@@ -243,12 +243,18 @@ function createFallbackStream(chains, getModelRegistry, cache, failedModels, onS
                             log.warn(`[Fallback DEBUG] ${targetModelString} connection timed out after 10s`);
                             abortController.abort(new Error("Connection timed out after 10 seconds"));
                         }, 10000);
+                        const onUserAbort = () => {
+                            if (timeoutId)
+                                clearTimeout(timeoutId);
+                            abortController.abort(options?.signal?.reason || new Error("User aborted request"));
+                        };
                         if (options?.signal) {
-                            options.signal.addEventListener("abort", () => {
-                                if (timeoutId)
-                                    clearTimeout(timeoutId);
-                                abortController.abort(options.signal?.reason);
-                            });
+                            if (options.signal.aborted) {
+                                onUserAbort();
+                            }
+                            else {
+                                options.signal.addEventListener("abort", onUserAbort);
+                            }
                         }
                         const sourceStream = streamSimple(targetModel, context, {
                             ...options,
@@ -261,54 +267,68 @@ function createFallbackStream(chains, getModelRegistry, cache, failedModels, onS
                         let hasEmitted = false;
                         let streamErrorBeforeEmit = false;
                         const eventBuffer = [];
-                        for await (const event of sourceStream) {
-                            if (event.type === "error" && !hasEmitted) {
-                                if (timeoutId)
-                                    clearTimeout(timeoutId);
-                                const errorStr = event.error?.errorMessage || JSON.stringify(event.error) || "Unknown error event";
-                                log.warn(`[Fallback] ${targetModelString} stream failed: ${errorStr}`);
-                                if (event.error) {
-                                    log.debug(`[Fallback DEBUG] Error Details:`, JSON.stringify(event.error, null, 2));
-                                }
-                                lastError = new Error(errorStr);
-                                streamErrorBeforeEmit = true;
-                                const { retryable, delayMs } = isRetryableError(errorStr);
-                                if (retryable) {
-                                    shouldFallback = true;
-                                    errorDelayMs = delayMs;
-                                    onFailure(targetModelString, delayMs);
-                                }
-                                else {
-                                    // Break retry loop on non-retryable error to try next model
-                                    shouldFallback = false;
-                                }
-                                break;
-                            }
-                            if (!hasEmitted) {
-                                eventBuffer.push(event);
-                                // Switch to live streaming once we get actual text or completion
-                                if (event.type === "text_delta" || event.type === "done") {
+                        try {
+                            for await (const event of sourceStream) {
+                                if (event.type === "error" && !hasEmitted) {
                                     if (timeoutId)
                                         clearTimeout(timeoutId);
-                                    hasEmitted = true;
-                                    log.debug(`[Fallback] ${targetModelString} succeeded (streaming started)`);
-                                    onSuccess(chainName, targetModelString, originalIndex);
-                                    for (const e of eventBuffer) {
-                                        stream.push(e);
+                                    const errorStr = event.error?.errorMessage || JSON.stringify(event.error) || "Unknown error event";
+                                    log.warn(`[Fallback] ${targetModelString} stream failed: ${errorStr}`);
+                                    if (event.error) {
+                                        log.debug(`[Fallback DEBUG] Error Details:`, JSON.stringify(event.error, null, 2));
                                     }
-                                    eventBuffer.length = 0; // Clear buffer
+                                    lastError = new Error(errorStr);
+                                    streamErrorBeforeEmit = true;
+                                    const { retryable, delayMs } = isRetryableError(errorStr);
+                                    if (retryable && !options?.signal?.aborted) {
+                                        shouldFallback = true;
+                                        errorDelayMs = delayMs;
+                                        onFailure(targetModelString, delayMs);
+                                    }
+                                    else {
+                                        // Break retry loop on non-retryable error to try next model
+                                        shouldFallback = false;
+                                    }
+                                    break;
+                                }
+                                if (!hasEmitted) {
+                                    eventBuffer.push(event);
+                                    // Switch to live streaming once we get actual text or completion
+                                    if (event.type === "text_delta" || event.type === "done") {
+                                        if (timeoutId)
+                                            clearTimeout(timeoutId);
+                                        hasEmitted = true;
+                                        log.debug(`[Fallback] ${targetModelString} succeeded (streaming started)`);
+                                        onSuccess(chainName, targetModelString, originalIndex);
+                                        for (const e of eventBuffer) {
+                                            stream.push(e);
+                                        }
+                                        eventBuffer.length = 0; // Clear buffer
+                                    }
+                                }
+                                else {
+                                    stream.push(event);
+                                    if (event.type === "error") {
+                                        stream.end();
+                                        if (options?.signal)
+                                            options.signal.removeEventListener("abort", onUserAbort);
+                                        return;
+                                    }
                                 }
                             }
-                            else {
-                                stream.push(event);
-                                if (event.type === "error") {
-                                    stream.end();
-                                    return;
-                                }
+                        }
+                        finally {
+                            if (options?.signal) {
+                                options.signal.removeEventListener("abort", onUserAbort);
                             }
                         }
                         if (timeoutId && !hasEmitted)
                             clearTimeout(timeoutId);
+                        if (options?.signal?.aborted) {
+                            log.debug(`[Fallback] User aborted request`);
+                            stream.end();
+                            return;
+                        }
                         if (shouldFallback) {
                             const waitDelay = errorDelayMs || currentDelayMs;
                             retryCount++;
@@ -349,6 +369,11 @@ function createFallbackStream(chains, getModelRegistry, cache, failedModels, onS
                             clearTimeout(timeoutId);
                         const errorStr = error instanceof Error ? error.message : String(error);
                         log.error(`[Fallback DEBUG] Caught exception for ${targetModelString}:`, error);
+                        if (options?.signal?.aborted) {
+                            log.debug(`[Fallback] User aborted request`);
+                            stream.end();
+                            return;
+                        }
                         const { retryable, delayMs } = isRetryableError(errorStr);
                         log.warn(`[Fallback] ${targetModelString} connection failed: ${errorStr}`);
                         lastError = error instanceof Error ? error : new Error(errorStr);
@@ -382,12 +407,16 @@ function createFallbackStream(chains, getModelRegistry, cache, failedModels, onS
             log.error(`[Fallback] All models in chain '${chainName}' failed`);
             stream.push({ type: "error", reason: "error", error: createErrorMessage(model, lastError || new Error("Unknown error"), chainName) });
             stream.end();
-        })();
+        })().catch((err) => {
+            log.error("[Fallback] Unhandled error in fallback stream execution:", err);
+            stream.push({ type: "error", reason: "error", error: createErrorMessage(model, err instanceof Error ? err : new Error(String(err)), chainName) });
+            stream.end();
+        });
         return stream;
     };
 }
 /** Build provider config models from chains */
-function buildProviderModels(chains) {
+export function buildProviderModels(chains) {
     return Object.keys(chains).map((chainName) => ({
         id: chainName,
         name: `Fallback/${chainName}`,

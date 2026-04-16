@@ -1,25 +1,40 @@
 {
   "name": "pi-fallback-provider",
   "version": "1.0.0",
-  "description": "Custom provider extension for pi that implements model fallback chains",
+  "description": "Model fallback chain extension for pi — automatic retry and failover across AI providers",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "check": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
-  },
-  "pi": {
-    "extensions": [
-      "./src/index.ts"
-    ]
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "pi-extension",
-    "pi-package"
+    "pi-package",
+    "fallback",
+    "failover",
+    "model-routing",
+    "high-availability",
+    "ai-provider"
   ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
   "devDependencies": {
     "@mariozechner/pi-ai": "^0.66.1",
     "@types/node": "^25.6.0",
@@ -28,6 +43,5 @@
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "^0.66.0"
-  },
-  "private": true
+  }
 }

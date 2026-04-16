@@ -1,3 +1,12 @@
+/**
+ * Manual integration test for pi-fallback-provider.
+ *
+ * This is NOT part of the automated test suite (vitest).
+ * Run manually with: npx tsx scripts/test-real-minimax.ts
+ *
+ * Requires pi CLI installed and API keys configured for minimax.
+ */
+
 import { exec } from "child_process";
 import { promisify } from "util";
 

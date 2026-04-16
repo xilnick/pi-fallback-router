@@ -1,117 +1,209 @@
 # pi-fallback-router
 
-A custom provider extension for [pi](https://github.com/badlogic/pi-mono) that implements model fallback chains for reliable routing when primary models fail.
+**Automatic model failover for [pi](https://github.com/badlogic/pi-mono)** — when your primary AI model fails, instantly falls back to the next one.
 
-## Features
+[![npm version](https://img.shields.io/npm/v/pi-fallback-provider.svg)](https://www.npmjs.com/package/pi-fallback-provider) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- **Automatic Fallback**: When a model fails with a retryable error (rate limit, overloaded, network issue), the extension automatically tries the next model in the chain
-- **Configurable Chains**: Define fallback chains in a JSON config file
-- **Virtual Models**: Works like a single model to pi, while delegating to real providers behind the scenes
+---
 
-## Installation
+## Why?
 
-1. Clone or copy this extension to your extensions directory:
-   ```bash
-   # Option 1: Use directly
-   pi -e /path/to/pi-fallback-router/src/index.ts
-   
-   # Option 2: Install to ~/.pi/agent/extensions/
-   cp -r /path/to/pi-fallback-router ~/.pi/agent/extensions/pi-fallback-router
-   ```
+AI providers go down. Rate limits hit. Networks flake. Instead of manually switching models every time something breaks, **pi-fallback-router** handles it automatically:
 
-## Configuration
+1. You define a priority-ordered chain of models
+2. It tries the first model
+3. If it fails with a retryable error (429, 529, timeout, network error…) it moves to the next
+4. It remembers what works and caches it for ~1 hour
 
-Create a config file at `~/.pi/fallback-chains.json`:
+**You type `fallback/reviewer` once. The router handles the rest.**
+
+## Highlights
+
+- ⚡ **Zero-config failover** — define chains in a JSON file, done
+- 🧠 **Smart caching** — remembers the last working model for ~1 hour, skips known failures
+- 🔄 **Automatic retries** — exponential backoff with configurable limits
+- ⏱️ **Retry-aware delays** — reads Google API `RetryInfo` headers to respect provider rate limits
+- 🐛 **Debug mode** — set `PI_EXTENSION_DEBUG=true` for verbose logging
+- 📦 **Tiny footprint** — single-file extension, no runtime dependencies
+
+## Quick Start
+
+**1. Install:**
+
+```bash
+npm install pi-fallback-provider
+```
+
+**2. Create `~/.pi/fallback-chains.json`:**
 
 ```json
 {
-  "reviewer": [
-    "zai/glm-5.1"
-  ],
   "worker": [
-    "minimax/MiniMax-M2.7"
+    "google/gemini-2.5-pro",
+    "anthropic/claude-sonnet-4",
+    "openai/gpt-4o"
   ],
-  "planner": [
-    "google/gemini-3.1-pro-preview",
-    "google-antigravity/gemini-3.1-pro-high",
-    "google-antigravity/claude-opus-4-6-thinking"
+  "reviewer": [
+    "anthropic/claude-sonnet-4",
+    "google/gemini-2.5-flash"
   ]
 }
 ```
 
-Each chain is a JSON array of model strings in the format `provider/model-id`.
-
-## Usage
-
-After creating the config, load the extension:
+**3. Load the extension:**
 
 ```bash
-pi -e ./src/index.ts
+pi -e node_modules/pi-fallback-provider/dist/index.js --model fallback/worker
 ```
 
-Then select a fallback model:
-
-```
-/model fallback/reviewer
-```
-
-Or use the `--model` flag:
+**4. Verify it works:**
 
 ```bash
-pi --model fallback/reviewer -p "explain this code"
+PI_EXTENSION_DEBUG=true pi -e node_modules/pi-fallback-provider/dist/index.js \
+  --model fallback/worker -p "Say hello"
 ```
 
-## Supported Providers
+You should see `[Fallback]` debug logs showing which model was selected.
 
-The extension supports any provider registered with pi, including:
+## Configuration
 
-- `google` - Google Gemini API
-- `google-gemini-cli` - Google Gemini CLI
-- `google-antigravity` - Google Antigravity (includes Claude models)
-- `google-vertex` - Google Vertex AI
-- `anthropic` - Anthropic Claude API
-- `openai` - OpenAI models
-- `mistral` - Mistral models
-- And more...
+The config file lives at `~/.pi/fallback-chains.json`. Each key is a chain name you can reference as `fallback/<chain-name>`.
+
+```json
+{
+  "chain-name": ["provider/model-id", "provider/model-id", ...]
+}
+```
+
+Model IDs use the format `provider/model-id` — the same strings shown by `pi --list-models`.
+
+### Common Configurations
+
+**High availability** — 3 providers, automatic failover:
+
+```json
+{
+  "default": [
+    "google/gemini-2.5-pro",
+    "anthropic/claude-sonnet-4",
+    "openai/gpt-4o"
+  ]
+}
+```
+
+**Cost optimization** — cheap primary, expensive fallback:
+
+```json
+{
+  "economy": [
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-pro",
+    "anthropic/claude-sonnet-4"
+  ]
+}
+```
+
+**Regional redundancy** — different endpoints for the same provider:
+
+```json
+{
+  "resilient": [
+    "google/gemini-2.5-pro",
+    "google-vertex/gemini-2.5-pro",
+    "google-gemini-cli/gemini-2.5-pro"
+  ]
+}
+```
 
 ## How It Works
 
-1. When you select a `fallback/<chain-name>` model, the extension looks up the chain in your config
-2. It attempts the first model in the chain
-3. If the model fails with a retryable error (429, 529, network errors, etc.), it fails over to the next model
-4. This continues until a model succeeds or all models in the chain have failed
+```
+Request → Try model-1
+              ├─ Success → Stream response, cache model-1
+              └─ Retryable error → Try model-2
+                                      ├─ Success → Stream, cache model-2
+                                      └─ Retryable error → Try model-3…
+                                                              └─ All failed → Error
+```
+
+- **Caching:** The last successful model is cached for 1 hour. On the next request, it's tried first.
+- **Cooldown:** Failed models are tracked with a 5-minute cooldown before they're retried.
+- **Retries:** Each model gets up to 10 retries with exponential backoff before moving to the next.
+- **Timeout:** Each connection has a 10-second timeout to prevent hanging streams.
 
 ## Retryable Errors
 
-The extension automatically retries on these error types:
+The router automatically retries on these error types:
 
-- HTTP 429 (Rate Limit)
-- HTTP 529 (Overloaded)
-- Network errors (fetch failed, connection refused, timeout)
-- Service unavailable errors
+| Error Type | Examples |
+|---|---|
+| HTTP 429 | Rate limit, quota exceeded |
+| HTTP 529 | Provider overloaded |
+| HTTP 5xx | Server errors (500, 502, 503, 504) |
+| Network | `fetch failed`, `connection refused`, `ECONNRESET` |
+| Timeout | Request timeout, socket hang up |
+| Provider status | `RESOURCE_EXHAUSTED`, `UNAVAILABLE`, `OVERLOADED` |
 
-Non-retryable errors (like authentication failures or invalid requests) immediately fail the chain.
+**Non-retryable errors** (400, 401, 403, invalid model, missing API key) fail the chain immediately — no point retrying those.
 
-## Example Use Cases
+## Supported Providers
 
-1. **High Availability**: Chain multiple providers for reliability
-2. **Cost Management**: Use expensive models only as fallback
-3. **Regional Redundancy**: Chain models from different regions/data centers
-4. **Feature Fallback**: Chain models with different capability levels
+Any provider registered with pi works. Use the exact provider name from `pi --list-models`:
+
+- `google` — Google Gemini API
+- `anthropic` — Anthropic Claude API
+- `openai` — OpenAI models
+- `google-vertex` — Google Vertex AI
+- `google-gemini-cli` — Gemini CLI
+- `google-antigravity` — Google Antigravity (includes Claude models)
+- `mistral` — Mistral models
+- And any other registered provider…
 
 ## Troubleshooting
 
-### Model Not Found
+### "Model not found"
 
-Make sure the model IDs match exactly what's shown in `pi --list-models`. For example, use `gemini-3.1-pro-preview` not `gemini-3.1-pro`.
+Check the model ID matches exactly what `pi --list-models` shows. Common mistake: using `gemini-2.5-pro` when the ID is `google/gemini-2.5-pro`.
 
-### API Key Errors
+### "No fallback triggered"
 
-Ensure you have API keys configured for all providers in your chains. The extension uses pi's model registry to resolve API keys.
+The error might be non-retryable. Authentication failures (401), bad requests (400), and forbidden errors (403) skip the fallback chain entirely — the issue is your API key or request, not the provider.
 
-### No Fallback Triggered
+### "Extension not loading"
 
-Check that the error is actually retryable. Non-retryable errors (400, 401, 403) will fail the chain immediately.
+Verify the path is correct and points to `dist/index.js` (compiled), not `src/index.ts`:
+```bash
+pi -e ./node_modules/pi-fallback-provider/dist/index.js ...
+```
+
+### "Chain is empty"
+
+Make sure your config file exists at `~/.pi/fallback-chains.json` and has at least one chain with valid model strings (must contain a `/`).
+
+### Debug mode
+
+Set `PI_EXTENSION_DEBUG=true` for detailed logs showing model selection, retries, and errors:
+```bash
+PI_EXTENSION_DEBUG=true pi -e ./dist/index.js --model fallback/worker -p "test"
+```
+
+## API (for extension developers)
+
+The extension exports its internal functions for testing or custom integrations:
+
+```typescript
+import {
+  parseModelString,
+  isRetryableError,
+  parseProviderError,
+  extractRetryDelay,
+  loadFallbackChains,
+  getModelOrder,
+  buildProviderModels,
+  CACHE_TTL_MS,
+  FAILED_COOLDOWN_MS,
+} from "pi-fallback-provider";
+```
 
 ## License
 
